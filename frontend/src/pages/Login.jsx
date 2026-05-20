@@ -78,18 +78,24 @@ const Login = () => {
         }
     };
 
-    const handleDemo = async () => {
+    const handleDemo = () => {
         setLoading(true);
-        try {
-            const { data } = await api.post('/auth/demo');
-            localStorage.setItem('token', data.token);
-            toast.success('Masuk Mode Demo!', { icon: '🚀' });
+        // Buat dummy token agar parsing payload di dashboard tidak error
+        const dummyPayload = {
+            id: 'demo-' + Date.now(),
+            username: 'demo',
+            name: 'Demo User'
+        };
+        const base64Payload = btoa(JSON.stringify(dummyPayload));
+        const dummyToken = `dummy.header.${base64Payload}.signature`;
+
+        localStorage.setItem('token', dummyToken);
+        localStorage.setItem('isDemo', 'true');
+        
+        toast.success('Masuk Mode Demo!', { icon: '🚀' });
+        setTimeout(() => {
             window.location.href = '/';
-        } catch (e) {
-            toast.error('Server tidak tersedia.');
-        } finally {
-            setLoading(false);
-        }
+        }, 500);
     };
 
     const variants = {

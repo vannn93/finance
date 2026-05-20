@@ -34,6 +34,14 @@ const Activity = () => {
     useEffect(() => { fetchTransactions(); }, []);
 
     const fetchTransactions = async () => {
+        const isDemo = localStorage.getItem('isDemo') === 'true';
+        if (isDemo) {
+            const localData = JSON.parse(localStorage.getItem('demo_transactions') || '[]');
+            setTransactions(localData);
+            setLoading(false);
+            return;
+        }
+
         try {
             const { data } = await api.get('/transactions');
             setTransactions(Array.isArray(data) ? data : []);
@@ -102,6 +110,16 @@ const Activity = () => {
     // Hapus Transaksi
     const handleDelete = async (id) => {
         if (!window.confirm('Hapus transaksi ini?')) return;
+        const isDemo = localStorage.getItem('isDemo') === 'true';
+        
+        if (isDemo) {
+            const localData = JSON.parse(localStorage.getItem('demo_transactions') || '[]');
+            const updated = localData.filter(t => t._id !== id);
+            localStorage.setItem('demo_transactions', JSON.stringify(updated));
+            setTransactions(updated);
+            return;
+        }
+
         try {
             await api.delete(`/transactions/${id}`);
             setTransactions(prev => prev.filter(t => t._id !== id));
@@ -113,6 +131,14 @@ const Activity = () => {
     // Hapus Semua Transaksi
     const handleDeleteAll = async () => {
         if (!window.confirm('PERINGATAN: Hapus SEMUA riwayat transaksi? Tindakan ini tidak bisa dibatalkan.')) return;
+        const isDemo = localStorage.getItem('isDemo') === 'true';
+        
+        if (isDemo) {
+            localStorage.removeItem('demo_transactions');
+            setTransactions([]);
+            return;
+        }
+
         try {
             await api.delete('/transactions/all');
             setTransactions([]);

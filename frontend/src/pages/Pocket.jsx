@@ -25,6 +25,13 @@ const Pocket = () => {
     useEffect(() => { fetchPockets(); }, []);
 
     const fetchPockets = async () => {
+        const isDemo = localStorage.getItem('isDemo') === 'true';
+        if (isDemo) {
+            const localData = JSON.parse(localStorage.getItem('demo_pockets') || '[]');
+            setAccounts(localData);
+            return;
+        }
+
         try {
             const { data } = await api.get('/api/pocket');
             setAccounts(data);
@@ -33,6 +40,21 @@ const Pocket = () => {
 
     const handleAdd = async (e) => {
         e.preventDefault();
+        const isDemo = localStorage.getItem('isDemo') === 'true';
+
+        if (isDemo) {
+            const localData = JSON.parse(localStorage.getItem('demo_pockets') || '[]');
+            const newPocket = { _id: Date.now().toString(), bankName, accountNumber };
+            const updated = [...localData, newPocket];
+            localStorage.setItem('demo_pockets', JSON.stringify(updated));
+            setAccounts(updated);
+            setShowAdd(false);
+            setBankName('');
+            setAccountNumber('');
+            toast.success('Rekening berhasil ditambahkan!');
+            return;
+        }
+
         try {
             const { data } = await api.post('/api/pocket', { bankName, accountNumber });
             setAccounts([...accounts, data]);
@@ -48,6 +70,17 @@ const Pocket = () => {
     const handleDelete = async (id, e) => {
         e.stopPropagation();
         if (!window.confirm('Yakin ingin menghapus rekening ini?')) return;
+        const isDemo = localStorage.getItem('isDemo') === 'true';
+
+        if (isDemo) {
+            const localData = JSON.parse(localStorage.getItem('demo_pockets') || '[]');
+            const updated = localData.filter(a => a._id !== id);
+            localStorage.setItem('demo_pockets', JSON.stringify(updated));
+            setAccounts(updated);
+            toast.success('Rekening dihapus!');
+            return;
+        }
+
         try {
             await api.delete(`/api/pocket/${id}`);
             setAccounts(accounts.filter(a => a._id !== id));

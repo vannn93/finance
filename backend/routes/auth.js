@@ -42,8 +42,12 @@ router.post('/demo', (req, res) => {
         writeDB(db);
     }
     
-    const token = jwt.sign({ id: demoUser.id, username: 'Demo User' }, process.env.JWT_SECRET || 'secret', { expiresIn: '1d' });
-    res.json({ token, user: { id: demoUser.id, username: 'Demo User' } });
+    const token = jwt.sign(
+        { id: demoUser.id, username: 'demo', name: 'Demo User' }, 
+        process.env.JWT_SECRET || 'secret', 
+        { expiresIn: '1d' }
+    );
+    res.json({ token, user: { id: demoUser.id, username: 'demo', name: 'Demo User' } });
 });
 
 // Keep old paths around so existing frontend calls don't crash aggressively, but we won't use them.

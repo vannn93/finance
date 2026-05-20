@@ -69,7 +69,7 @@ const Profile = () => {
     const payload = getUserPayload();
     const userPhone = payload?.username || 'User';
     const userId = payload?.id || 'anon';
-    const isDemo = userPhone === 'Demo User' || userPhone === 'demo';
+    const isDemo = localStorage.getItem('isDemo') === 'true';
 
     // Avatar hewan dari DiceBear lorelei (animal-like characters)
     const avatarUrl = `https://api.dicebear.com/7.x/croodles/svg?seed=${userId}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
@@ -116,6 +116,7 @@ const Profile = () => {
     // ——— Logout ———
     const handleLogout = () => {
         localStorage.removeItem('token');
+        localStorage.removeItem('isDemo');
         window.location.href = '/login';
     };
 

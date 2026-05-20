@@ -35,7 +35,7 @@ const Register = () => {
 
         setLoading(true);
         try {
-            const { data } = await api.post('/auth/request-register-otp', { phone, password: pin });
+            const { data } = await api.post('/auth/request-register-otp', { phone, password: pin, name });
 
             // DEV FALLBACK
             if (data.devOTP) {

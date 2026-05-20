@@ -100,6 +100,18 @@ app.get('/api/wa-reset', async (req, res) => {
     }
 });
 
+app.get('/api/wa-test', async (req, res) => {
+    const { phone } = req.query;
+    if (!phone) return res.status(400).json({ message: 'Masukkan parameter ?phone=nomor' });
+    try {
+        const wa = require('./utils/wa');
+        await wa.sendOTP(phone, '1234');
+        res.json({ message: 'Pesan test terkirim ke ' + phone });
+    } catch (err) {
+        res.status(500).json({ message: 'Gagal kirim test', error: err.message });
+    }
+});
+
 // Quick Pocket Route
 app.get('/api/pocket', require('./middleware/authMiddleware'), (req, res) => {
     const db = require('./utils/db').readDB();
@@ -202,10 +214,6 @@ app.use('/upload', uploadRoutes);
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({ message: 'Terjadi kesalahan pada server' });
-});
-
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
 });
 
 app.listen(PORT, '0.0.0.0', () => {

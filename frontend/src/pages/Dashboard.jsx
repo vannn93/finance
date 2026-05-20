@@ -62,13 +62,22 @@ const Dashboard = () => {
 
     const navigate = useNavigate();
     const payload = getUserPayload();
-    const userPhone = payload?.username || 'User';
+    const userName = payload?.name || 'User';
+    const userPhone = payload?.username || '';
     const userId = payload?.id || 'anon';
     const avatarUrl = `https://api.dicebear.com/7.x/croodles/svg?seed=${userId}&backgroundColor=b6e3f4,c0aede,d1d4f9`;
 
     useEffect(() => { fetchData(); }, []);
 
     const fetchData = async () => {
+        const isDemo = localStorage.getItem('isDemo') === 'true';
+        if (isDemo) {
+            const localData = JSON.parse(localStorage.getItem('demo_transactions') || '[]');
+            setTransactions(localData);
+            setLoading(false);
+            return;
+        }
+
         try {
             const { data } = await api.get('/transactions');
             setTransactions(Array.isArray(data) ? data : []);
@@ -100,6 +109,26 @@ const Dashboard = () => {
         e.preventDefault();
         if (!form.amount || Number(form.amount) <= 0) return;
         setSubmitting(true);
+
+        const isDemo = localStorage.getItem('isDemo') === 'true';
+        if (isDemo) {
+            const localData = JSON.parse(localStorage.getItem('demo_transactions') || '[]');
+            const newTx = { 
+                _id: Date.now().toString(), 
+                type: modalType, 
+                amount: Number(form.amount),
+                category: form.category,
+                description: form.description || form.category,
+                date: new Date().toISOString() 
+            };
+            const updated = [newTx, ...localData];
+            localStorage.setItem('demo_transactions', JSON.stringify(updated));
+            setTransactions(updated);
+            setModal(null);
+            setSubmitting(false);
+            return;
+        }
+
         try {
             await api.post('/transactions', {
                 type: modalType, amount: Number(form.amount),
@@ -304,7 +333,7 @@ const Dashboard = () => {
             <div className="bg-white px-5 pt-5 pb-4 flex justify-between items-center border-b border-slate-100">
                 <div>
                     <p className="text-[11px] text-slate-400 font-medium">Selamat datang 👋</p>
-                    <p className="text-sm font-bold text-slate-800">+62 {userPhone}</p>
+                    <p className="text-sm font-bold text-slate-800">{userName}</p>
                 </div>
                 <button onClick={() => navigate('/profile')}
                     className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#1880f0]/20 bg-blue-50">

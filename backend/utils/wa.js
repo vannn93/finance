@@ -12,6 +12,14 @@ let reconnectAttempts = 0;
 let keepAliveInterval = null;
 let isInitializing = false;
 
+// Status object for better reference
+const status = {
+    isReady: false,
+    isInitializing: false,
+    reconnectAttempts: 0,
+    hasQR: false
+};
+
 // ─── Clear session folder + qr image ────────────────────────────────────────
 const clearSession = () => {
     try {
@@ -50,33 +58,60 @@ const startKeepAlive = () => {
 
 // ─── Build a new Client instance ─────────────────────────────────────────────
 const buildClient = () => {
+    const chromePaths = [
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        path.join(process.env.LOCALAPPDATA || '', 'Google/Chrome/Application/chrome.exe'),
+    ];
+
+    let executablePath = null;
+    for (const p of chromePaths) {
+        if (fs.existsSync(p)) {
+            executablePath = p;
+            break;
+        }
+    }
+
+    const puppeteerOptions = {
+        headless: true,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--no-first-run',
+            '--disable-extensions',
+            '--disable-background-networking',
+            '--disable-default-apps',
+            '--disable-sync',
+            '--metrics-recording-only',
+            '--mute-audio',
+            '--no-default-browser-check'
+        ],
+        timeout: 60000
+    };
+
+    if (executablePath) {
+        console.log(`[WA] Using Chrome at: ${executablePath}`);
+        puppeteerOptions.executablePath = executablePath;
+    } else {
+        console.warn('[WA] Chrome not found in standard paths. Attempting to use bundled Chromium...');
+    }
+
     return new Client({
         authStrategy: new LocalAuth({
             dataPath: AUTH_PATH
         }),
-        puppeteer: {
-            headless: true,
-            executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--no-first-run',
-                '--disable-extensions',
-                '--disable-background-networking',
-                '--disable-default-apps',
-                '--disable-sync',
-                '--metrics-recording-only',
-                '--mute-audio',
-                '--no-default-browser-check'
-            ],
-            timeout: 60000
+        webVersionCache: {
+            type: 'remote',
+            remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
         },
-        qrMaxRetries: 5,          // Coba ulang QR sampai 5x sebelum menyerah
-        authTimeoutMs: 120000,    // 2 menit timeout auth
-        takeoverOnConflict: true, // Ambil alih sesi jika ada konflik
-        takeoverTimeoutMs: 10000
+        puppeteer: puppeteerOptions,
+        qrMaxRetries: 5,
+        authTimeoutMs: 120000,
+        takeoverOnConflict: true,
+        takeoverTimeoutMs: 10000,
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
     });
 };
 
@@ -88,12 +123,12 @@ const initializeClient = (forceClean = false) => {
     }
 
     isInitializing = true;
+    status.isInitializing = true;
     isReady = false;
-    module.exports.isReady = false;
+    status.isReady = false;
     stopKeepAlive();
 
     if (forceClean) clearSession();
-    // Hapus hanya file QR, bukan session
     if (fs.existsSync(QR_PATH)) {
         try { fs.unlinkSync(QR_PATH); } catch (e) { /* ignore */ }
     }
@@ -103,12 +138,13 @@ const initializeClient = (forceClean = false) => {
     client = buildClient();
 
     client.on('qr', async (qr) => {
-        console.log('[WA] QR Code baru diterima. Menyimpan ke qr.png...');
+        console.log('[WA] QR Code received.');
+        status.hasQR = true;
         try {
             await qrcodeImg.toFile(QR_PATH, qr, { scale: 10 });
-            console.log('[WA] QR tersimpan! Buka: http://localhost:5000/qr');
+            console.log('[WA] QR saved! View at: http://localhost:5000/qr');
         } catch (err) {
-            console.error('[WA] Gagal simpan QR:', err.message);
+            console.error('[WA] Failed to save QR:', err.message);
         }
     });
 
@@ -117,46 +153,46 @@ const initializeClient = (forceClean = false) => {
     });
 
     client.on('authenticated', () => {
-        console.log('[WA] Authenticated berhasil!');
+        console.log('[WA] Authenticated successfully!');
         reconnectAttempts = 0;
-        // Hapus QR setelah auth
+        status.reconnectAttempts = 0;
         if (fs.existsSync(QR_PATH)) {
             try { fs.unlinkSync(QR_PATH); } catch (e) { /* ignore */ }
         }
+        status.hasQR = false;
     });
 
     client.on('ready', () => {
         isReady = true;
-        module.exports.isReady = true;
+        status.isReady = true;
         isInitializing = false;
+        status.isInitializing = false;
         reconnectAttempts = 0;
-        console.log('[WA] ✅ WhatsApp SIAP! OTP bisa dikirim.');
+        status.reconnectAttempts = 0;
+        console.log('[WA] ✅ WhatsApp READY!');
         startKeepAlive();
     });
 
     client.on('auth_failure', (msg) => {
-        console.error('[WA] ❌ Auth gagal:', msg);
+        console.error('[WA] ❌ Auth failure:', msg);
         isReady = false;
-        module.exports.isReady = false;
+        status.isReady = false;
         isInitializing = false;
-        console.log('[WA] Session rusak. Menghapus dan restart dengan QR baru...');
-        // Paksa hapus session lama karena rusak
+        status.isInitializing = false;
         scheduleReconnect(true);
     });
 
     client.on('disconnected', (reason) => {
-        console.log('[WA] 🔌 Terputus:', reason);
+        console.log('[WA] 🔌 Disconnected:', reason);
         isReady = false;
-        module.exports.isReady = false;
+        status.isReady = false;
         isInitializing = false;
+        status.isInitializing = false;
         stopKeepAlive();
 
         if (reason === 'LOGOUT') {
-            // User logout manual → hapus session, perlu scan ulang
-            console.log('[WA] User logout manual. Session dihapus.');
             scheduleReconnect(true);
         } else {
-            // Koneksi putus karena internet/server → coba reconnect tanpa hapus session
             scheduleReconnect(false);
         }
     });
@@ -171,8 +207,9 @@ const initializeClient = (forceClean = false) => {
 // ─── Reconnect dengan exponential backoff (max 60 detik) ────────────────────
 const scheduleReconnect = (forceClean = false) => {
     reconnectAttempts++;
-    const delay = Math.min(5000 * reconnectAttempts, 60000); // 5s, 10s, ... max 60s
-    console.log(`[WA] Reconnect dalam ${delay / 1000}s... (forceClean: ${forceClean})`);
+    status.reconnectAttempts = reconnectAttempts;
+    const delay = Math.min(5000 * reconnectAttempts, 60000);
+    console.log(`[WA] Reconnect in ${delay / 1000}s... (forceClean: ${forceClean})`);
 
     if (client) {
         try { client.destroy().catch(() => {}); } catch (e) { /* ignore */ }
@@ -206,7 +243,7 @@ const sendOTP = async (targetNumber, code) => {
         );
     }
 
-    // Format nomor
+    // Standardize number for WhatsApp
     let num = targetNumber.replace(/\D/g, '').trim();
     if (num.startsWith('0')) {
         num = '62' + num.slice(1);
@@ -222,27 +259,37 @@ const sendOTP = async (targetNumber, code) => {
         '🚫 JANGAN berikan kepada siapapun!';
 
     try {
+        console.log(`[WA] Attempting to send OTP to ${num}...`);
         await client.sendMessage(chatId, message);
-        console.log('[WA] ✅ OTP terkirim ke +' + num);
+        console.log('[WA] ✅ OTP sent to +' + num);
     } catch (err) {
-        console.error('[WA] Gagal kirim:', err.message);
-        // Cek apakah koneksi masih valid
-        isReady = false;
-        module.exports.isReady = false;
-        scheduleReconnect(false);
-        throw new Error('Gagal kirim OTP. WhatsApp sedang reconnect, coba lagi dalam 30 detik.');
+        console.error('[WA] Send failed:', err.message);
+        // If it's a connection issue, mark as not ready
+        if (err.message.includes('Session') || err.message.includes('close')) {
+            isReady = false;
+            status.isReady = false;
+            scheduleReconnect(false);
+        }
+        throw new Error('Gagal kirim OTP via WhatsApp: ' + err.message);
     }
 };
 
 // ─── Expose status ───────────────────────────────────────────────────────────
-const getStatus = () => ({
-    isReady,
-    isInitializing,
-    reconnectAttempts,
-    hasQR: fs.existsSync(QR_PATH)
-});
+const getStatus = () => ({ ...status });
 
 // ─── Start ───────────────────────────────────────────────────────────────────
 initializeClient(false);
 
-module.exports = { sendOTP, resetClient, getStatus, isReady };
+// Clean up on exit
+process.on('SIGINT', async () => {
+    console.log('[WA] Shutting down...');
+    if (client) await client.destroy();
+    process.exit(0);
+});
+
+module.exports = { 
+    sendOTP, 
+    resetClient, 
+    getStatus, 
+    get isReady() { return isReady; } 
+};

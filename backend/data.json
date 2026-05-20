@@ -4,15 +4,38 @@
       "id": "demo123",
       "username": "demo",
       "password": "demo"
+    },
+    {
+      "id": "1777521904855",
+      "username": "6281515296365",
+      "name": "yusuf",
+      "password": "123456"
     }
   ],
-  "transactions": [],
+  "transactions": [
+    {
+      "_id": "1777522533873",
+      "userId": "1777521904855",
+      "type": "income",
+      "amount": 160000,
+      "category": "gaji",
+      "description": "gaji",
+      "date": "2026-04-30T04:15:33.873Z",
+      "proofImage": null
+    }
+  ],
   "pockets": [
     {
       "_id": "1776307886374",
       "userId": "1776157174560",
       "bankName": "seabank",
       "accountNumber": "901271420660"
+    },
+    {
+      "_id": "1777522614226",
+      "userId": "1777521904855",
+      "bankName": "dana1234567890",
+      "accountNumber": "123456789"
     }
   ]
 }

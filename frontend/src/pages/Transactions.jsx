@@ -220,7 +220,7 @@ const Transactions = () => {
                                     <tr key={tx._id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
                                         <td className="py-3 px-4 text-center">
                                             {tx.proofImage ? (
-                                                <a href={`http://localhost:5000${tx.proofImage}`} target="_blank" rel="noreferrer" className="inline-block p-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition-colors">
+                                                <a href={`${api.defaults.baseURL}${tx.proofImage}`} target="_blank" rel="noreferrer" className="inline-block p-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition-colors">
                                                     <ImageIcon size={18} />
                                                 </a>
                                             ) : (
